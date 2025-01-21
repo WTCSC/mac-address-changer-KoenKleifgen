@@ -1,19 +1,24 @@
 #!/bin/bash
 
 
-usage() { 
-    echo "Usage: $0 [-s <45|90>] [-p <string>]" 
-    1>&2; exit 1; 
+usage() { echo "Usage: $0 [-i <eth0|eth1|...>] [-a <mac-address>]" 1>&2; exit 1; }
+
+verify_mac_address() {
+  [[ "$1" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]
 }
 
-while getopts ":s:p:" o; do
+
+while getopts ":i:a:" o; do
     case "${o}" in
-        s)
-            s=${OPTARG}
-            ((s == 45 || s == 90)) || usage
+        i)
+            i=${OPTARG}
             ;;
-        p)
-            p=${OPTARG}
+        a)
+            a=${OPTARG}
+            if ! verify_mac_address "${a}"; then
+            echo "invalind MAC Address (${a})"
+            usage
+            fi
             ;;
         *)
             usage
@@ -22,9 +27,22 @@ while getopts ":s:p:" o; do
 done
 shift $((OPTIND-1))
 
-if [ -z "${s}" ] || [ -z "${p}" ]; then
+if [ -z "${i}" ] || [ -z "${a}" ]; then
     usage
 fi
 
-echo "s = ${s}"
-echo "p = ${p}"
+if ! command -v ifconfig >/dev/null 2>&1 || ! command -v ip >/dev/null 2>&1; then
+    echo "Error: 'ifconfig' or 'ip' command not found. Install 'net-tools'."
+    exit 1
+fi
+
+
+sudo ip addr "${i}" 
+sudo ifconfig "${i}" down 
+sudo ifconfig "${i}" hw ether "${a}" 
+sudo ifconfig "${i}" up 
+sudo ip addr "${i}"
+
+
+echo "i = ${i}"
+echo "a = ${a}"
